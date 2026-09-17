@@ -1,6 +1,7 @@
 mod afc;
 mod airtraffic;
 mod archive;
+mod setup;
 mod types;
 
 use clap::Parser;
@@ -12,6 +13,7 @@ use std::process::ExitCode;
 use afc::{run_native_finish, run_native_stage};
 use airtraffic::run_native_airtraffic_host;
 use archive::build_books_plist;
+use setup::run_setup;
 use types::{PrimaryResult, RunReport};
 
 pub const DEFAULT_TARGET_DIRECTORY: &str = "/var/mobile/Library/SpringBoard";
@@ -28,6 +30,9 @@ struct CliArgs {
 
     #[arg(long)]
     check_dll: bool,
+
+    #[arg(long)]
+    setup: bool,
 }
 
 fn generate_random_token(length: usize) -> String {
@@ -62,9 +67,21 @@ fn compute_relative_target_id(target_directory: &str, leaf: &str) -> String {
 async fn main() -> Result<ExitCode, Box<dyn Error>> {
     let args = CliArgs::parse();
 
+    if args.setup {
+        return match run_setup().await {
+            Ok(_) => Ok(ExitCode::SUCCESS),
+            Err(err) => {
+                eprintln!("Setup error: {}", err);
+                Ok(ExitCode::FAILURE)
+            }
+        };
+    }
+
     if args.check_dll {
-        println!("{{\"ok\": true, \"native_rust\": true}}");
-        return Ok(ExitCode::SUCCESS);
+        let atc_res = run_native_airtraffic_host("check", &[], &[]).await;
+        let is_ok = atc_res.error.is_none() || atc_res.exit_code == Some(0);
+        println!("{}", serde_json::to_string_pretty(&atc_res)?);
+        return Ok(if is_ok { ExitCode::SUCCESS } else { ExitCode::FAILURE });
     }
 
     let udid_str = match args.device {
