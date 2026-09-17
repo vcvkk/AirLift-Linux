@@ -5,34 +5,31 @@ AirTraffic and AFC device synchronization tool written in Rust for Linux.
 ## Requirements
 
 - Linux (x86_64)
-- `usbmuxd`
-- `wine` 64-bit with Apple Mobile Device Support (`AirTrafficHost.dll`, `CoreFP.dll`)
-- Python 3 with `pymobiledevice3`
-- `socat` TCP bridge to usbmuxd:
-  ```bash
-  socat TCP-LISTEN:27015,fork,reuseaddr UNIX-CONNECT:/var/run/usbmuxd &
-  ```
+- `usbmuxd` daemon
 
-## Build
+## Quick Start
+
+1. Run one-time setup (automatically prepares dependencies and local environment):
+   ```bash
+   airlift --setup
+   ```
+
+2. Run synchronization check against connected device:
+   ```bash
+   airlift --device <UDID> --target /var/mobile/Library/SpringBoard
+   ```
+
+## Build from Source
 
 ```bash
 cargo build --release
 ```
 
-The binary will be saved at `target/release/airlift`.
+The compiled binary is saved at `target/release/airlift`.
 
-## Usage
+## Command Line Options
 
-```bash
-# Run against connected device
-./target/release/airlift --device <UDID> --target /var/mobile/Library/SpringBoard
-
-# Check AirTrafficHost DLL status
-./target/release/airlift --check-dll
-```
-
-### Command Line Options
-
-- `--device <UDID>`: Specify target device UDID.
-- `--target <PATH>`: Target directory on device (default: `/var/mobile/Library/SpringBoard`).
-- `--check-dll`: Verify Wine AirTrafficHost setup.
+- `--setup`: Automatically fetch and configure required runtime environment in `~/.airlift/`.
+- `--device <UDID>`: Specify target iOS device UDID (default: first available usbmux device).
+- `--target <PATH>`: Target directory on the device (default: `/var/mobile/Library/SpringBoard`).
+- `--check-dll`: Verify AirTraffic status.
