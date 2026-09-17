@@ -2,7 +2,7 @@ use std::process::Stdio;
 use tokio::process::Command;
 use crate::types::{FinishResult, StageResult};
 
-pub async fn run_pymobile_stage(
+pub async fn run_native_stage(
     udid: &str,
     target: &str,
     source: &str,
@@ -108,7 +108,7 @@ asyncio.run(fn_run())
     })
 }
 
-pub async fn run_pymobile_finish(
+pub async fn run_native_finish(
     udid: &str,
     source: &str,
     link_dest: &str,

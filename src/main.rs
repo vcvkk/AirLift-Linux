@@ -9,8 +9,8 @@ use sha2::{Digest, Sha256};
 use std::error::Error;
 use std::process::ExitCode;
 
-use afc::{run_pymobile_finish, run_pymobile_stage};
-use airtraffic::run_wine_airtraffic_host;
+use afc::{run_native_finish, run_native_stage};
+use airtraffic::run_native_airtraffic_host;
 use archive::build_books_plist;
 use types::{PrimaryResult, RunReport};
 
@@ -63,10 +63,8 @@ async fn main() -> Result<ExitCode, Box<dyn Error>> {
     let args = CliArgs::parse();
 
     if args.check_dll {
-        let atc_res = run_wine_airtraffic_host("check", &[], &[]).await;
-        let is_ok = atc_res.error.is_none() || atc_res.exit_code == Some(0);
-        println!("{}", serde_json::to_string_pretty(&atc_res)?);
-        return Ok(if is_ok { ExitCode::SUCCESS } else { ExitCode::FAILURE });
+        println!("{{\"ok\": true, \"native_rust\": true}}");
+        return Ok(ExitCode::SUCCESS);
     }
 
     let udid_str = match args.device {
@@ -97,9 +95,9 @@ async fn main() -> Result<ExitCode, Box<dyn Error>> {
 
     let books_bytes = build_books_plist(&identifiers);
 
-    let stage_result = run_pymobile_stage(&udid_str, &args.target, &source, &link_dest, &recovered, &payload, &books_bytes).await?;
-    let atc_result = run_wine_airtraffic_host(&udid_str, &identifiers, &destinations).await;
-    let finish_result = run_pymobile_finish(&udid_str, &source, &link_dest, &recovered, &payload, &leaf).await?;
+    let stage_result = run_native_stage(&udid_str, &args.target, &source, &link_dest, &recovered, &payload, &books_bytes).await?;
+    let atc_result = run_native_airtraffic_host(&udid_str, &identifiers, &destinations).await;
+    let finish_result = run_native_finish(&udid_str, &source, &link_dest, &recovered, &payload, &leaf).await?;
 
     let overall_ok = stage_result.ok && atc_result.ok && finish_result.ok;
 

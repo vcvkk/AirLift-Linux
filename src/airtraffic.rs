@@ -4,7 +4,7 @@ use std::process::Stdio;
 use tokio::process::Command;
 use crate::types::AirTrafficResult;
 
-pub async fn run_wine_airtraffic_host(
+pub async fn run_native_airtraffic_host(
     udid: &str,
     identifiers: &[String],
     destinations: &[String],

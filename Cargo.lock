@@ -23,6 +23,7 @@ dependencies = [
 name = "airlift"
 version = "0.1.0"
 dependencies = [
+ "byteorder",
  "clap",
  "hex",
  "plist",
