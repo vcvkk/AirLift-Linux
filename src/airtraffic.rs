@@ -1,0 +1,83 @@
+use std::env;
+use std::path::PathBuf;
+use std::process::Stdio;
+use tokio::process::Command;
+use crate::types::AirTrafficResult;
+
+pub async fn run_wine_airtraffic_host(
+    udid: &str,
+    identifiers: &[String],
+    destinations: &[String],
+) -> AirTrafficResult {
+    let mut exe_path = PathBuf::from(env::current_dir().unwrap_or_default());
+    exe_path.push("build");
+    exe_path.push("airtraffic_host_win.exe");
+
+    if !exe_path.exists() {
+        let mut alt_path = PathBuf::from(env::current_dir().unwrap_or_default());
+        alt_path.pop();
+        alt_path.push("build");
+        alt_path.push("airtraffic_host_win.exe");
+        if alt_path.exists() {
+            exe_path = alt_path;
+        } else {
+            return AirTrafficResult {
+                ok: false,
+                sync_allowed: None,
+                ready_for_sync: None,
+                file_complete_messages: None,
+                exit_code: Some(1),
+                error: Some(format!("airtraffic_host_win.exe not found at {:?}", exe_path)),
+            };
+        }
+    }
+
+    let wine_prefix = env::var("WINEPREFIX").unwrap_or_else(|_| "/home/vcvk/wine_airtraffic".to_string());
+
+    let mut command = Command::new("wine");
+    command.arg(&exe_path);
+    command.arg(udid);
+
+    for (ident, dest) in identifiers.iter().zip(destinations.iter()) {
+        command.arg(ident);
+        command.arg(dest);
+    }
+
+    command.env("WINEPREFIX", wine_prefix);
+    command.stdout(Stdio::piped());
+    command.stderr(Stdio::piped());
+
+    match command.output().await {
+        Ok(output) => {
+            let stdout_str = String::from_utf8_lossy(&output.stdout);
+            let exit_code = output.status.code().unwrap_or(-1);
+
+            for line in stdout_str.lines().rev() {
+                let trimmed = line.trim();
+                if trimmed.starts_with('{') && trimmed.ends_with('}') {
+                    if let Ok(mut parsed) = serde_json::from_str::<AirTrafficResult>(trimmed) {
+                        parsed.exit_code = Some(exit_code);
+                        return parsed;
+                    }
+                }
+            }
+
+            AirTrafficResult {
+                ok: false,
+                sync_allowed: None,
+                ready_for_sync: None,
+                file_complete_messages: None,
+                exit_code: Some(exit_code),
+                error: Some(format!("Wine process produced no valid JSON output: {}", stdout_str)),
+            }
+        }
+        Err(err) => AirTrafficResult {
+            ok: false,
+            sync_allowed: None,
+            ready_for_sync: None,
+            file_complete_messages: None,
+            exit_code: None,
+            error: Some(format!("Failed to execute Wine process: {}", err)),
+        },
+    }
+}
